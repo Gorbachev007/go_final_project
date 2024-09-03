@@ -9,50 +9,50 @@ import (
 	"time"
 )
 
-// DateFormat is the constant format for dates used throughout the application
+// DateFormat — это постоянный формат для дат, используемый в приложении
 const DateFormat = "20060102"
 
-// NextDate computes the next date for a task based on a repeat rule
+// NextDate вычисляет следующую дату для задачи на основе правила повторения
 func NextDate(now time.Time, date string, repeat string) (string, error) {
 	if repeat == "" {
 		return "", errors.New("правило повторения пустое")
 	}
 
-	// Parse the initial task date using the DateFormat constant
+	// Разбираем начальную дату задачи с использованием постоянного формата DateFormat
 	taskDate, err := time.Parse(DateFormat, date)
 	if err != nil {
 		return "", fmt.Errorf("неверный формат даты: %v", err)
 	}
 
-	// Start calculation from taskDate or now, whichever is later
+	// Начинаем расчет с taskDate или now, в зависимости от того, что больше
 	startDate := now
 	if taskDate.After(now) {
 		startDate = taskDate
 	}
 
 	switch {
-	case strings.HasPrefix(repeat, "d "): // Handle daily repetition rule "d <number>"
+	case strings.HasPrefix(repeat, "d "): // Обрабатываем правило ежедневного повторения "d <число>"
 		daysStr := strings.TrimSpace(repeat[2:])
 		days, err := strconv.Atoi(daysStr)
 		if err != nil || days <= 0 || days > 400 {
 			return "", fmt.Errorf("неверное правило повторения 'd': %v", err)
 		}
 
-		// Increment taskDate by specified number of days until it exceeds both 'now' and 'date'
+		// Увеличиваем taskDate на указанное количество дней, пока он не превысит 'now' и 'date'
 		for !taskDate.After(startDate) {
 			taskDate = taskDate.AddDate(0, 0, days)
 		}
 
 		return taskDate.Format(DateFormat), nil
 
-	case repeat == "y": // Handle yearly repetition rule "y"
-		// Adjusted logic to directly calculate next yearly occurrence without checking if taskDate is after now
+	case repeat == "y": // Обрабатываем правило ежегодного повторения "y"
+		// Логика прямо рассчитывает следующую ежегодную дату без проверки, если taskDate после now
 		for !taskDate.After(startDate) {
 			year := taskDate.Year() + 1
 			month := taskDate.Month()
 			day := taskDate.Day()
 
-			// Handle leap year scenario
+			// Обработка сценария високосного года
 			if month == time.February && day == 29 && !isLeapYear(year) {
 				taskDate = time.Date(year, time.March, 1, 0, 0, 0, 0, taskDate.Location())
 			} else {
@@ -62,7 +62,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 
 		return taskDate.Format(DateFormat), nil
 
-	case strings.HasPrefix(repeat, "w "): // Handle weekly repetition rule "w <days>"
+	case strings.HasPrefix(repeat, "w "): // Обрабатываем правило еженедельного повторения "w <дни>"
 		daysStr := strings.TrimSpace(repeat[2:])
 		days := strings.Split(daysStr, ",")
 		if len(days) == 0 {
@@ -82,7 +82,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		}
 		sort.Ints(daysOfWeek)
 
-		// Set initial startDate to the maximum of taskDate and now
+		// Устанавливаем начальную дату startDate на максимум из taskDate и now
 		startDate = taskDate
 		if now.After(taskDate) {
 			startDate = now
@@ -90,13 +90,13 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 
 		initialDate := taskDate
 
-		// Loop until the weekday matches one in the daysOfWeek
-		for !containsInt(daysOfWeek, int(startDate.Weekday())) || !(startDate.YearDay() > initialDate.YearDay()) { // Weekday+1 to adjust for Monday = 1, Sunday = 7
+		// Выполняем цикл, пока день недели не совпадет с одним из daysOfWeek
+		for !containsInt(daysOfWeek, int(startDate.Weekday())) || !(startDate.YearDay() > initialDate.YearDay()) {
 			startDate = startDate.AddDate(0, 0, 1)
 		}
 		return startDate.Format(DateFormat), nil
 
-	case strings.HasPrefix(repeat, "m "): // Handle monthly repetition rule "m <days> [<months>]"
+	case strings.HasPrefix(repeat, "m "): // Обрабатываем правило ежемесячного повторения "m <дни> [<месяцы>]"
 		parts := strings.Split(strings.TrimSpace(repeat[2:]), " ")
 		if len(parts) == 0 {
 			return "", fmt.Errorf("неверное правило повторения 'm': дни не указаны")
@@ -140,7 +140,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 				continue
 			}
 
-			// Find the earliest valid date in the current month
+			// Находим ближайшую допустимую дату в текущем месяце
 			var nextValidDate time.Time
 			for _, day := range daysOfMonth {
 				var candidateDate time.Time
@@ -160,18 +160,18 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 					}
 				}
 
-				// Find the closest date after startDate
+				// Находим ближайшую дату после startDate
 				if candidateDate.After(startDate) && (nextValidDate.IsZero() || candidateDate.Before(nextValidDate)) {
 					nextValidDate = candidateDate
 				}
 			}
 
-			// If a valid date is found, return it
+			// Если найдена допустимая дата, возвращаем её
 			if !nextValidDate.IsZero() {
 				return nextValidDate.Format(DateFormat), nil
 			}
 
-			// If no valid date is found in the current month, move to the next month
+			// Если не найдено допустимой даты в текущем месяце, переходим к следующему месяцу
 			taskDate = taskDate.AddDate(0, 1, 0)
 			taskDate = time.Date(taskDate.Year(), taskDate.Month(), 1, 0, 0, 0, 0, taskDate.Location())
 		}
@@ -181,12 +181,12 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 	}
 }
 
-// lastDayOfMonth returns the last day of the specified month and year
+// lastDayOfMonth возвращает последний день указанного месяца и года
 func lastDayOfMonth(year int, month time.Month) int {
 	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
 }
 
-// containsInt checks if a slice contains a specific integer
+// containsInt проверяет, содержит ли срез определённое целое число
 func containsInt(slice []int, value int) bool {
 	for _, v := range slice {
 		if v == value {
@@ -196,17 +196,17 @@ func containsInt(slice []int, value int) bool {
 	return false
 }
 
-// findNextMonth finds the next month in a sorted list that comes after or is equal to the current month
+// findNextMonth находит следующий месяц в отсортированном списке, который идет после или равен текущему месяцу
 func findNextMonth(currentMonth int, months []int) int {
 	for _, month := range months {
 		if month >= currentMonth {
 			return month
 		}
 	}
-	return months[0] // If nothing is found, return the first month in the sorted list
+	return months[0] // Если ничего не найдено, возвращаем первый месяц в отсортированном списке
 }
 
-// isLeapYear determines if a year is a leap year
+// isLeapYear определяет, является ли год високосным
 func isLeapYear(year int) bool {
 	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
 }
