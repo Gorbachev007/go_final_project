@@ -1,5 +1,5 @@
 # Базовый образ для сборки Go-приложения
-FROM golang:1.22 AS builder
+FROM golang:1.22-alpine AS builder
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
@@ -11,7 +11,7 @@ COPY . .
 RUN go build -o main .
 
 # Базовый образ для запуска приложения
-FROM ubuntu:latest
+FROM alpine:latest
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
@@ -25,8 +25,8 @@ ENV TODO_PORT=7540
 ENV TODO_DBFILE=/app/scheduler.db
 ENV TODO_PASSWORD=123
 
-# Указываем порт для прослушивания
-EXPOSE 7540
+# Указываем порт для прослушивания; делаем его динамическим с помощью переменной окружения
+EXPOSE ${TODO_PORT}
 
 # Запускаем приложение
 CMD ["./main"]

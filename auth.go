@@ -13,12 +13,18 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
+var appPassword string // Глобальная переменная для хранения пароля
+
+// init инициализирует глобальные переменные
+func init() {
+	// Получаем значение пароля из переменной окружения один раз при старте приложения
+	appPassword = os.Getenv("TODO_PASSWORD")
+}
+
 // authMiddleware — middleware для проверки JWT токена
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Получаем значение пароля из переменной окружения
-		pass := os.Getenv("TODO_PASSWORD")
-		if pass != "" { // Если пароль установлен, проверяем аутентификацию
+		if appPassword != "" { // Если пароль установлен, проверяем аутентификацию
 			cookie, err := r.Cookie("token")
 			if err != nil {
 				if err == http.ErrNoCookie {
@@ -32,6 +38,7 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			tokenStr := cookie.Value
 			claims := &Claims{}
 
+			// Здесь предполагается, что jwtKey уже определён где-то в другом месте кода
 			tkn, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 				return jwtKey, nil
 			})
@@ -66,6 +73,7 @@ func generateToken() (string, error) {
 		},
 	}
 
+	// Здесь предполагается, что jwtKey уже определён где-то в другом месте кода
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtKey)
 }

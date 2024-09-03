@@ -20,23 +20,7 @@ func main() {
 	}
 
 	// Определяем путь к базе данных
-	dbPath := os.Getenv("TODO_DBFILE")
-	if dbPath == "" {
-		appPath, err := os.Executable()
-		if err != nil {
-			log.Fatal(err)
-		}
-		dbPath = filepath.Join(filepath.Dir(appPath), "scheduler.db")
-	}
-
-	log.Println(dbPath)
-
-	// Проверяем существование файла базы данных
-	_, err := os.Stat(dbPath)
-	install := false
-	if os.IsNotExist(err) {
-		install = true
-	}
+	dbPath := getDatabasePath()
 
 	// Подключаемся к базе данных
 	db, err := sql.Open("sqlite3", dbPath)
@@ -45,23 +29,9 @@ func main() {
 	}
 	defer db.Close()
 
-	// Если базы данных нет, создаем таблицу scheduler
-	if install {
-		createTableQuery := `
-		CREATE TABLE scheduler (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			date TEXT NOT NULL,
-			title TEXT NOT NULL,
-			comment TEXT,
-			repeat TEXT(128)
-		);
-		CREATE INDEX idx_date ON scheduler(date);
-		`
-		_, err = db.Exec(createTableQuery)
-		if err != nil {
-			log.Fatalf("Ошибка при создании таблицы: %v", err)
-		}
-		log.Println("База данных и таблица созданы.")
+	// Инициализируем базу данных
+	if err := initializeDatabase(db); err != nil {
+		log.Fatalf("Ошибка при инициализации базы данных: %v", err)
 	}
 
 	// Директория с файлами фронтенда
@@ -83,6 +53,51 @@ func main() {
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// getDatabasePath возвращает путь к файлу базы данных
+func getDatabasePath() string {
+	dbPath := os.Getenv("TODO_DBFILE")
+	if dbPath == "" {
+		appPath, err := os.Executable()
+		if err != nil {
+			log.Fatal(err)
+		}
+		dbPath = filepath.Join(filepath.Dir(appPath), "scheduler.db")
+	}
+	log.Println("Путь к базе данных:", dbPath)
+	return dbPath
+}
+
+// initializeDatabase инициализирует базу данных и создает таблицы, если необходимо
+func initializeDatabase(db *sql.DB) error {
+	// Проверяем существование файла базы данных
+	_, err := os.Stat(getDatabasePath())
+	install := false
+	if os.IsNotExist(err) {
+		install = true
+	}
+
+	// Если базы данных нет, создаем таблицу scheduler
+	if install {
+		createTableQuery := `
+		CREATE TABLE scheduler (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			date TEXT NOT NULL,
+			title TEXT NOT NULL,
+			comment TEXT,
+			repeat TEXT(128)
+		);
+		CREATE INDEX idx_date ON scheduler(date);
+		`
+		_, err := db.Exec(createTableQuery)
+		if err != nil {
+			return err
+		}
+		log.Println("База данных и таблица созданы.")
+	}
+
+	return nil
 }
 
 // makeHandler оборачивает обработчик и передает ему базу данных
