@@ -32,14 +32,16 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 
 	switch {
 	case strings.HasPrefix(repeat, "d "): // Обрабатываем правило ежедневного повторения "d <число>"
+
 		daysStr := strings.TrimSpace(repeat[2:])
 		days, err := strconv.Atoi(daysStr)
 		if err != nil || days <= 0 || days > 400 {
 			return "", fmt.Errorf("неверное правило повторения 'd': %v", err)
 		}
 
-		// Увеличиваем taskDate на указанное количество дней, пока он не превысит 'now' и 'date'
-		for !taskDate.After(startDate) {
+		taskDate = taskDate.AddDate(0, 0, days)
+
+		for taskDate.Before(now) {
 			taskDate = taskDate.AddDate(0, 0, days)
 		}
 
@@ -98,6 +100,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 
 	case strings.HasPrefix(repeat, "m "): // Обрабатываем правило ежемесячного повторения "m <дни> [<месяцы>]"
 		parts := strings.Split(strings.TrimSpace(repeat[2:]), " ")
+
 		if len(parts) == 0 {
 			return "", fmt.Errorf("неверное правило повторения 'm': дни не указаны")
 		}
@@ -106,7 +109,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		var daysOfMonth []int
 		for _, dayStr := range dayParts {
 			day, err := strconv.Atoi(dayStr)
-			if err != nil || day == 0 || day < -31 || day > 31 {
+			if err != nil || day == 0 || day < -2 || day > 31 {
 				return "", fmt.Errorf("неверное правило повторения 'm': неверный день '%s'", dayStr)
 			}
 			daysOfMonth = append(daysOfMonth, day)

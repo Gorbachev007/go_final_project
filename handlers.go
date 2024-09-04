@@ -296,8 +296,24 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
+	// Проверка, существует ли задача с данным id
+	var exists bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM scheduler WHERE id = ?)`, id).Scan(&exists)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Ошибка проверки существования задачи в БД: %s"}`, err.Error()), http.StatusInternalServerError)
+		log.Printf("Ошибка проверки существования задачи в БД в deleteTaskHandler: %v", err)
+		return
+	}
+
+	if !exists {
+		http.Error(w, `{"error":"Задача с таким ID не существует"}`, http.StatusNotFound)
+		log.Printf("Задача с ID: %s не найдена в deleteTaskHandler", id)
+		return
+	}
+
+	// Удаление задачи
 	query := `DELETE FROM scheduler WHERE id = ?`
-	_, err := db.Exec(query, id)
+	_, err = db.Exec(query, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"Ошибка удаления задачи из БД: %s"}`, err.Error()), http.StatusInternalServerError)
 		log.Printf("Ошибка удаления задачи из БД в deleteTaskHandler: %v", err)
@@ -306,7 +322,7 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	log.Printf("Задача с ID: %s успешно удалена", id)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{}`)
+	fmt.Fprint(w, `{}`)
 }
 
 // Обработчик для /api/tasks
