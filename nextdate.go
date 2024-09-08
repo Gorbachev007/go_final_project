@@ -33,6 +33,10 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 	switch {
 	case strings.HasPrefix(repeat, "d "): // Обрабатываем правило ежедневного повторения "d <число>"
 
+		//if repeat == "d" {
+		//	repeat = "d 1"
+		//}
+
 		daysStr := strings.TrimSpace(repeat[2:])
 		days, err := strconv.Atoi(daysStr)
 		if err != nil || days <= 0 || days > 400 {

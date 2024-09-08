@@ -29,6 +29,14 @@ func init() {
 	appPassword = os.Getenv("TODO_PASSWORD")
 }
 
+func compareDates(t1, t2 time.Time) (time.Time, time.Time) {
+	// Обнуляем время, оставляем только дату
+	date1 := time.Date(t1.Year(), t1.Month(), t1.Day(), 0, 0, 0, 0, t1.Location())
+	date2 := time.Date(t2.Year(), t2.Month(), t2.Day(), 0, 0, 0, 0, t2.Location())
+
+	return date1, date2
+}
+
 // Обработчик для /api/signin
 func signInHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -138,7 +146,8 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	now := time.Now()
 	taskDate, _ := time.Parse(dateFormat, task.Date)
-	if taskDate.Before(now) {
+	taskDate_fix, now_fix := compareDates(taskDate, now)
+	if taskDate_fix.Before(now_fix) {
 		if task.Repeat == "" {
 			task.Date = now.Format(dateFormat)
 		} else {
